@@ -5,7 +5,7 @@ import { wmsBridgeLogs } from '../../mock/data/wms-bridge'
 import { useLiveStore } from '../../store/liveStore'
 import { useAuthStore } from '../../store/authStore'
 
-type SettingsTab = 'general' | 'monitoring' | 'integrations' | 'branding' | 'alerts'
+type SettingsTab = 'general' | 'monitoring' | 'integrations' | 'branding' | 'alerts' | 'notifications' | 'billing' | 'retention' | 'overrides' | 'bridge-api'
 
 const tabLabels: Record<SettingsTab, string> = {
   general: 'General',
@@ -13,6 +13,11 @@ const tabLabels: Record<SettingsTab, string> = {
   integrations: 'Integrations',
   branding: 'Branding',
   alerts: 'Alert Rules',
+  notifications: 'Notifications',
+  billing: 'Billing',
+  retention: 'Retention',
+  overrides: 'Employee Overrides',
+  'bridge-api': 'Bridge API',
 }
 
 export function SettingsPage() {
@@ -95,7 +100,6 @@ export function SettingsPage() {
               { label: 'App Usage Tracking', sub: 'Foreground application monitoring', enabled: true },
               { label: 'Biometric Verification', sub: 'Fingerprint and face verification at clock-in', enabled: true },
               { label: 'Idle Detection', sub: 'Flag inactivity beyond 10 minutes', enabled: true },
-              { label: 'Screen Recording', sub: 'Continuous recording — requires consent', enabled: false },
             ].map(item => (
               <div key={item.label} className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-0">
                 <div>
@@ -213,6 +217,218 @@ export function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {tab === 'notifications' && (
+        <div className="space-y-4">
+          <GlassCard>
+            <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-5">Notification Channels</div>
+            <div className="space-y-4">
+              {[
+                { label: 'In-App Notifications', sub: 'Bell icon in topbar for all users', enabled: true },
+                { label: 'Email Notifications', sub: 'Send alerts to employee email addresses', enabled: true },
+                { label: 'Slack Integration', sub: 'Post to configured Slack channels', enabled: false },
+                { label: 'Webhook Delivery', sub: 'POST to external webhook endpoint on events', enabled: false },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-0">
+                  <div>
+                    <div className="text-white/75 text-sm font-outfit">{item.label}</div>
+                    <div className="text-white/30 text-xs mt-0.5">{item.sub}</div>
+                  </div>
+                  <div className={`w-10 h-[22px] rounded-full relative cursor-pointer transition-colors ${item.enabled ? 'bg-violet-600' : 'bg-white/10'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white absolute top-[3px] transition-all shadow-sm ${item.enabled ? 'right-[3px]' : 'left-[3px]'}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+          <GlassCard>
+            <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-5">Notification Events</div>
+            <div className="space-y-2">
+              {[
+                { event: 'Leave Request Submitted', roles: 'Manager, HR', enabled: true },
+                { event: 'Exception Flagged', roles: 'Admin, Manager', enabled: true },
+                { event: 'Document Pending Acknowledgement', roles: 'Employee', enabled: true },
+                { event: 'Biometric Failure', roles: 'Admin', enabled: true },
+                { event: 'Contract Expiry Approaching', roles: 'HR, Admin', enabled: true },
+                { event: 'Probation Ending', roles: 'HR, Manager', enabled: true },
+                { event: 'WMS Sync Failure', roles: 'Admin', enabled: false },
+              ].map(n => (
+                <div key={n.event} className="flex items-center gap-4 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                  <div className="flex-1">
+                    <div className="text-white/75 text-sm font-outfit">{n.event}</div>
+                    <div className="text-white/30 text-xs mt-0.5">Recipients: {n.roles}</div>
+                  </div>
+                  <div className={`w-9 h-5 rounded-full relative cursor-pointer transition-colors ${n.enabled ? 'bg-violet-600' : 'bg-white/10'}`}>
+                    <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${n.enabled ? 'right-[3px]' : 'left-[3px]'}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {tab === 'billing' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Current Plan', value: 'Full Suite', sub: 'All modules enabled', highlight: true },
+              { label: 'Billing Cycle', value: 'Annual', sub: 'Renews 2027-01-01' },
+              { label: 'Seats', value: '10 / 50', sub: '40 seats remaining' },
+            ].map(c => (
+              <GlassCard key={c.label}>
+                <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-2">{c.label}</div>
+                <div className={`text-lg font-outfit font-semibold ${c.highlight ? 'text-violet-400' : 'text-white/85'}`}>{c.value}</div>
+                <div className="text-white/30 text-xs mt-1">{c.sub}</div>
+              </GlassCard>
+            ))}
+          </div>
+          <GlassCard>
+            <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-5">Module Subscriptions</div>
+            <div className="space-y-2">
+              {[
+                { module: 'Core HR', status: 'Active', price: 'MYR 5/seat/mo' },
+                { module: 'Leave Management', status: 'Active', price: 'MYR 2/seat/mo' },
+                { module: 'Workforce Monitoring', status: 'Active', price: 'MYR 8/seat/mo' },
+                { module: 'Activity Tracking', status: 'Active', price: 'MYR 4/seat/mo' },
+                { module: 'Identity Verification', status: 'Active', price: 'MYR 3/seat/mo' },
+                { module: 'Exception Engine', status: 'Active', price: 'MYR 2/seat/mo' },
+                { module: 'Document Management', status: 'Active', price: 'MYR 1/seat/mo' },
+                { module: 'Performance Reviews', status: 'Inactive', price: 'MYR 3/seat/mo' },
+              ].map(m => (
+                <div key={m.module} className="flex items-center gap-4 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                  <div className="flex-1 text-white/75 text-sm font-outfit">{m.module}</div>
+                  <span className={`text-xs font-geist ${m.status === 'Active' ? 'text-green-400' : 'text-white/30'}`}>{m.status}</span>
+                  <span className="text-white/35 text-xs font-geist">{m.price}</span>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {tab === 'retention' && (
+        <GlassCard>
+          <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-5">Data Retention Policy</div>
+          <div className="space-y-4">
+            {[
+              { category: 'Employee Records', retention: '7 years after termination', action: 'Archive then delete', locked: true },
+              { category: 'Activity Screenshots', retention: '90 days', action: 'Auto-delete', locked: false },
+              { category: 'Biometric Events', retention: '1 year', action: 'Auto-delete', locked: false },
+              { category: 'Exception Logs', retention: '2 years', action: 'Archive', locked: false },
+              { category: 'Leave Records', retention: '5 years', action: 'Archive', locked: true },
+              { category: 'Payroll History', retention: '7 years', action: 'Archive then delete', locked: true },
+              { category: 'Audit Trail', retention: '3 years', action: 'Archive', locked: true },
+              { category: 'WMS Sync Logs', retention: '180 days', action: 'Auto-delete', locked: false },
+            ].map(p => (
+              <div key={p.category} className="flex items-center gap-4 px-4 py-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                <div className="flex-1">
+                  <div className="text-white/80 text-sm font-outfit">{p.category}</div>
+                  <div className="text-white/30 text-xs mt-0.5">Action: {p.action}</div>
+                </div>
+                <span className="text-white/55 text-sm font-geist">{p.retention}</span>
+                {p.locked
+                  ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/[0.04] text-white/25 border border-white/[0.06]">Locked</span>
+                  : <button className="text-[11px] px-2 py-0.5 rounded-full bg-violet-600/15 text-violet-400 border border-violet-500/25 hover:bg-violet-600/25 transition-colors">Edit</button>
+                }
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {tab === 'overrides' && (
+        <div className="space-y-4">
+          <div className="px-4 py-3 rounded-xl bg-blue-500/[0.05] border border-blue-500/20 text-blue-300 text-sm">
+            Per-employee overrides take precedence over org-level monitoring settings. Use sparingly for sensitive roles.
+          </div>
+          <GlassCard className="p-0 overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="text-left px-4 py-3 text-white/30 text-xs font-outfit uppercase tracking-wider">Employee</th>
+                  <th className="text-center px-4 py-3 text-white/30 text-xs font-outfit uppercase tracking-wider">Screenshots</th>
+                  <th className="text-center px-4 py-3 text-white/30 text-xs font-outfit uppercase tracking-wider">App Tracking</th>
+                  <th className="text-center px-4 py-3 text-white/30 text-xs font-outfit uppercase tracking-wider">Idle Detection</th>
+                  <th className="text-left px-4 py-3 text-white/30 text-xs font-outfit uppercase tracking-wider">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: 'Sarah Lim', role: 'Super Admin', screenshots: false, appTracking: false, idle: false, reason: 'Executive exemption' },
+                  { name: 'Priya Devi', role: 'Finance Analyst', screenshots: true, appTracking: false, idle: true, reason: 'Remote worker policy' },
+                  { name: 'Vikram Singh', role: 'Senior Engineer', screenshots: true, appTracking: false, idle: true, reason: 'Remote worker policy' },
+                ].map(row => (
+                  <tr key={row.name} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="text-white/85 text-sm font-outfit">{row.name}</div>
+                      <div className="text-white/30 text-xs">{row.role}</div>
+                    </td>
+                    {[row.screenshots, row.appTracking, row.idle].map((val, i) => (
+                      <td key={i} className="px-4 py-3 text-center">
+                        <span className={`text-xs ${val ? 'text-green-400' : 'text-red-400'}`}>{val ? 'On' : 'Off'}</span>
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-white/40 text-xs">{row.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </GlassCard>
+        </div>
+      )}
+
+      {tab === 'bridge-api' && (
+        <div className="space-y-4">
+          <GlassCard>
+            <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-5">WorkManage Pro Connection</div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-xl">🔗</div>
+              <div>
+                <div className="text-white/85 font-outfit text-sm font-semibold">WorkManage Pro</div>
+                <div className="text-green-400 text-xs mt-0.5">Connected · Last sync 08:05 today</div>
+              </div>
+              <button className="ml-auto px-3 py-1.5 text-xs font-outfit text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">Disconnect</button>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: 'Tenant Endpoint', value: 'https://wms.workmanagepro.com/api/v2' },
+                { label: 'Sync Interval', value: 'Every 15 minutes' },
+                { label: 'Bridge Version', value: 'v2.1.4' },
+                { label: 'Total Records Synced', value: '1,247 records' },
+              ].map(f => (
+                <div key={f.label} className="flex justify-between items-center py-2 border-b border-white/[0.04] last:border-0">
+                  <span className="text-white/40 text-sm">{f.label}</span>
+                  <span className="text-white/65 text-sm font-geist">{f.value}</span>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+          <GlassCard>
+            <div className="text-white/35 text-xs font-outfit uppercase tracking-wider mb-5">API Key Management</div>
+            <div className="space-y-3">
+              {[
+                { name: 'Production Key', prefix: 'onevo_pk_...a3f9', created: '2026-01-15', lastUsed: '2026-04-18 08:05', status: 'active' },
+                { name: 'Staging Key', prefix: 'onevo_sk_...7c2e', created: '2026-02-01', lastUsed: '2026-04-16 14:30', status: 'active' },
+              ].map(key => (
+                <div key={key.name} className="flex items-center gap-4 px-4 py-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                  <div className="flex-1">
+                    <div className="text-white/80 text-sm font-outfit">{key.name}</div>
+                    <div className="text-white/30 text-xs font-geist mt-0.5">{key.prefix} · Created {key.created}</div>
+                    <div className="text-white/20 text-xs mt-0.5">Last used {key.lastUsed}</div>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">{key.status}</span>
+                  <button className="text-xs px-2.5 py-1 rounded-lg text-red-400 border border-red-500/20 hover:bg-red-500/10 transition-colors font-outfit">Revoke</button>
+                </div>
+              ))}
+              <button className="w-full py-2.5 mt-2 rounded-lg border border-violet-500/30 bg-violet-600/10 text-violet-300 text-sm font-outfit hover:bg-violet-600/20 transition-colors">
+                + Generate New API Key
+              </button>
+              <p className="text-white/25 text-xs">Keys are displayed only once at creation. Store them securely — ONEVO cannot retrieve them later.</p>
             </div>
           </GlassCard>
         </div>

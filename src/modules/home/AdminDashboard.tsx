@@ -176,6 +176,37 @@ export function AdminDashboard() {
           </div>
         </GlassCard>
       </div>
+
+      {/* Zone 5 — Active Exception Alerts */}
+      {allExceptions.length > 0 && (
+        <div>
+          <div className="text-white/50 text-xs font-outfit uppercase tracking-wider mb-3">Active Alerts · {allExceptions.length} open</div>
+          <div className="grid grid-cols-2 gap-3">
+            {allExceptions.slice(0, 4).map(ex => {
+              const emp = employees.find(e => e.id === ex.employeeId)
+              const borderColor = ex.severity === 'critical' || ex.severity === 'high' ? 'border-red-500/50' : ex.severity === 'medium' ? 'border-amber-500/50' : 'border-blue-500/30'
+              const bgColor = ex.severity === 'critical' || ex.severity === 'high' ? 'bg-red-500/[0.04]' : ex.severity === 'medium' ? 'bg-amber-500/[0.04]' : 'bg-blue-500/[0.04]'
+              const badgeColor = ex.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' : ex.severity === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' : ex.severity === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+              return (
+                <div key={ex.id} className={cn('flex items-start gap-3 px-4 py-3 rounded-xl border', borderColor, bgColor)}>
+                  <div className={cn('w-2 h-2 rounded-full mt-1 flex-shrink-0', dotSeverity[ex.severity])} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white/85 text-sm font-outfit">{ex.type}</div>
+                    <div className="text-white/40 text-xs mt-0.5">{ex.message}</div>
+                    {emp && <div className="text-white/30 text-xs mt-1">{emp.name} · {emp.department}</div>}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className={cn('text-[11px] px-2 py-0.5 rounded-full border font-outfit capitalize', badgeColor)}>{ex.severity}</span>
+                    <button onClick={() => setDismissed(d => [...d, ex.id])} className="text-white/20 hover:text-white/50 transition-colors">
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
