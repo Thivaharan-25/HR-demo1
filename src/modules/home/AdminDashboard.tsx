@@ -12,14 +12,17 @@ import { cn } from '../../lib/utils'
 const dotColor: Record<string, string> = {
   online: 'bg-green-400', break: 'bg-amber-400', offline: 'bg-gray-500', 'clocked-out': 'bg-red-400',
 }
-const pillColor: Record<string, string> = {
-  critical: 'bg-red-500/20 border-red-500/40 text-red-400',
-  high: 'bg-red-500/20 border-red-500/40 text-red-400',
-  medium: 'bg-amber-500/20 border-amber-500/40 text-amber-400',
-  low: 'border border-white/20 text-white/50',
-}
 const dotSeverity: Record<string, string> = {
   critical: 'bg-red-400', high: 'bg-red-400', medium: 'bg-amber-400', low: 'bg-gray-400',
+}
+const severityLabel: Record<string, string> = {
+  critical: 'Urgent', high: 'High', medium: 'Moderate', low: 'Low',
+}
+const badgeColor: Record<string, string> = {
+  critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+  high: 'bg-red-500/20 text-red-400 border-red-500/30',
+  medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 }
 
 const companyEvents = [
@@ -30,6 +33,16 @@ const companyEvents = [
   { name: 'NEXUS Hackathon', date: 'Jun 1' },
 ]
 
+const months: Record<string, number> = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 }
+
+function daysFromNow(dateStr: string): number {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const [mon, day] = dateStr.split(' ')
+  const d = new Date(today.getFullYear(), months[mon], parseInt(day))
+  return Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 export function AdminDashboard() {
   const presenceStatuses = useLiveStore((s) => s.presenceStatuses)
   const liveExceptions = useLiveStore((s) => s.liveExceptions)
@@ -38,36 +51,17 @@ export function AdminDashboard() {
 
   const allExceptions = [...exceptionEvents, ...liveExceptions].filter(e => !e.resolved && !dismissed.includes(e.id))
   const online = employees.filter(e => presenceStatuses[e.id] === 'online').length
-  const openExceptions = allExceptions.length
   const pendingLeave = leaveRequests.filter(l => l.status === 'pending')
 
   return (
     <div className="space-y-5">
-      {/* Zone 1 — Exception Alert Strip */}
-      {allExceptions.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {allExceptions.map(ex => (
-            <div
-              key={ex.id}
-              className={cn('flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-outfit whitespace-nowrap flex-shrink-0', pillColor[ex.severity])}
-            >
-              <span className={cn('w-1.5 h-1.5 rounded-full', dotSeverity[ex.severity])} />
-              <span>{ex.type} — {employees.find(e => e.id === ex.employeeId)?.name ?? ex.employeeId}</span>
-              <button onClick={() => setDismissed(d => [...d, ex.id])} className="ml-1 hover:opacity-70">
-                <X size={11} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Zone 2 — KPI Cards */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Headcount', value: employees.length, delta: '+2%', deltaPos: true, color: 'text-white' },
-          { label: 'Online Now', value: online, delta: '+5%', deltaPos: true, color: 'text-green-400' },
-          { label: 'Open Exceptions', value: openExceptions, delta: null, color: 'text-red-400', glow: openExceptions > 0 },
-          { label: 'Pending Leave', value: pendingLeave.length, delta: '-1%', deltaPos: false, color: 'text-amber-400' },
+          { label: 'Total Staff', value: employees.length, delta: '+2%', deltaPos: true, color: 'text-white' },
+          { label: 'Online Now', value: online, sub: `of ${employees.length}`, delta: '+5%', deltaPos: true, color: 'text-green-400' },
+          { label: 'Active Issues', value: allExceptions.length, delta: null, color: 'text-red-400', glow: allExceptions.length > 0 },
+          { label: 'Leave Requests', value: pendingLeave.length, delta: '-1%', deltaPos: false, color: 'text-amber-400' },
         ].map(card => (
           <GlassCard key={card.label} glow={card.glow}>
             <div className="flex items-start justify-between">
@@ -78,15 +72,60 @@ export function AdminDashboard() {
                 </span>
               )}
             </div>
-            <div className={cn('text-3xl font-geist font-bold mt-1', card.color)}>{card.value}</div>
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <div className={cn('text-3xl font-geist font-bold', card.color)}>{card.value}</div>
+              {card.sub && <span className="text-sm text-white/30 font-outfit">{card.sub}</span>}
+            </div>
           </GlassCard>
         ))}
       </div>
 
+      {/* Current Issues */}
+      {allExceptions.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-white/50 text-xs font-outfit uppercase tracking-wider">
+              Current Issues · {allExceptions.length} open
+            </div>
+            <button
+              onClick={() => setDismissed(allExceptions.map(e => e.id))}
+              className="text-xs text-white/30 hover:text-white/60 font-outfit transition-colors"
+            >
+              Dismiss All
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {allExceptions.slice(0, 4).map(ex => {
+              const emp = employees.find(e => e.id === ex.employeeId)
+              const borderColor = ex.severity === 'critical' || ex.severity === 'high' ? 'border-red-500/50' : ex.severity === 'medium' ? 'border-amber-500/50' : 'border-blue-500/30'
+              const bgColor = ex.severity === 'critical' || ex.severity === 'high' ? 'bg-red-500/[0.04]' : ex.severity === 'medium' ? 'bg-amber-500/[0.04]' : 'bg-blue-500/[0.04]'
+              return (
+                <div key={ex.id} className={cn('flex items-start gap-3 px-4 py-3 rounded-xl border', borderColor, bgColor)}>
+                  <div className={cn('w-2 h-2 rounded-full mt-1 flex-shrink-0', dotSeverity[ex.severity])} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white/85 text-sm font-outfit">{ex.type}</div>
+                    <div className="text-white/40 text-xs mt-0.5">{ex.message}</div>
+                    {emp && <div className="text-white/30 text-xs mt-1">{emp.name} · {emp.department}</div>}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className={cn('text-[11px] px-2 py-0.5 rounded-full border font-outfit', badgeColor[ex.severity])}>
+                      {severityLabel[ex.severity]}
+                    </span>
+                    <button onClick={() => setDismissed(d => [...d, ex.id])} className="text-white/20 hover:text-white/50 transition-colors">
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
-        {/* Zone 3 — Pending Actions */}
+        {/* Needs Approval */}
         <GlassCard className="col-span-1">
-          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Pending Actions</div>
+          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Needs Approval</div>
           <div className="space-y-2.5">
             {pendingLeave.slice(0, 3).map(req => {
               const emp = employees.find(e => e.id === req.employeeId)
@@ -106,10 +145,10 @@ export function AdminDashboard() {
           </div>
         </GlassCard>
 
-        {/* Zone 5 — Trends Chart */}
+        {/* Weekly Trends */}
         <GlassCard className="col-span-2">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-white/70 font-outfit font-semibold text-sm">Trends</div>
+            <div className="text-white/70 font-outfit font-semibold text-sm">Weekly Trends</div>
             <div className="flex gap-1">
               {['productivity', 'attendance', 'leave'].map(tab => (
                 <button
@@ -118,7 +157,7 @@ export function AdminDashboard() {
                   className={cn(
                     'px-3 py-0.5 rounded-full text-xs font-outfit capitalize transition-all',
                     trendTab === tab
-                      ? 'bg-violet-600/20 text-violet-400 border border-violet-500/30'
+                      ? 'bg-violet-600/20 text-violet-400 border border-violet-500/30 font-semibold'
                       : 'text-white/40 hover:text-white/60'
                   )}
                 >
@@ -145,9 +184,9 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {/* Zone 4 — Workforce Live Bar */}
+        {/* Who's Online */}
         <GlassCard className="col-span-2">
-          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Workforce Live</div>
+          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Who's Online</div>
           <div className="flex gap-4 overflow-x-auto pb-1">
             {employees.slice(0, 10).map(emp => (
               <div key={emp.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
@@ -162,51 +201,25 @@ export function AdminDashboard() {
           </div>
         </GlassCard>
 
-        {/* Zone 6 — Workforce Events */}
+        {/* Upcoming Events */}
         <GlassCard className="col-span-1">
           <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Upcoming Events</div>
           <div className="space-y-2">
-            {companyEvents.map(ev => (
-              <div key={ev.name} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
-                <span className="text-white/80 text-xs font-outfit flex-1">{ev.name}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/40 font-geist">{ev.date}</span>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* Zone 5 — Active Exception Alerts */}
-      {allExceptions.length > 0 && (
-        <div>
-          <div className="text-white/50 text-xs font-outfit uppercase tracking-wider mb-3">Active Alerts · {allExceptions.length} open</div>
-          <div className="grid grid-cols-2 gap-3">
-            {allExceptions.slice(0, 4).map(ex => {
-              const emp = employees.find(e => e.id === ex.employeeId)
-              const borderColor = ex.severity === 'critical' || ex.severity === 'high' ? 'border-red-500/50' : ex.severity === 'medium' ? 'border-amber-500/50' : 'border-blue-500/30'
-              const bgColor = ex.severity === 'critical' || ex.severity === 'high' ? 'bg-red-500/[0.04]' : ex.severity === 'medium' ? 'bg-amber-500/[0.04]' : 'bg-blue-500/[0.04]'
-              const badgeColor = ex.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' : ex.severity === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' : ex.severity === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+            {companyEvents.map(ev => {
+              const days = daysFromNow(ev.date)
               return (
-                <div key={ex.id} className={cn('flex items-start gap-3 px-4 py-3 rounded-xl border', borderColor, bgColor)}>
-                  <div className={cn('w-2 h-2 rounded-full mt-1 flex-shrink-0', dotSeverity[ex.severity])} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white/85 text-sm font-outfit">{ex.type}</div>
-                    <div className="text-white/40 text-xs mt-0.5">{ex.message}</div>
-                    {emp && <div className="text-white/30 text-xs mt-1">{emp.name} · {emp.department}</div>}
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className={cn('text-[11px] px-2 py-0.5 rounded-full border font-outfit capitalize', badgeColor)}>{ex.severity}</span>
-                    <button onClick={() => setDismissed(d => [...d, ex.id])} className="text-white/20 hover:text-white/50 transition-colors">
-                      <X size={12} />
-                    </button>
-                  </div>
+                <div key={ev.name} className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                  <span className="text-white/80 text-xs font-outfit flex-1">{ev.name}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/40 font-geist">
+                    {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`}
+                  </span>
                 </div>
               )
             })}
           </div>
-        </div>
-      )}
+        </GlassCard>
+      </div>
     </div>
   )
 }

@@ -8,9 +8,9 @@ const presenceCycle: Record<string, string[]> = {
 const presenceIndexes: Record<string, number> = {}
 
 const exceptionPool = [
-  { type: 'Late Clock-In', severity: 'low' as const, employeeId: 'e4', message: 'Ravi Kumar clocked in 45 min late' },
-  { type: 'Unproductive App', severity: 'medium' as const, employeeId: 'e5', message: 'Priya Devi used YouTube during work hours' },
-  { type: 'No Clock-In', severity: 'critical' as const, employeeId: 'e8', message: 'Vikram Singh has not clocked in' },
+  { type: 'Clocked In Late', severity: 'low' as const, employeeId: 'e4', message: 'Ravi Kumar clocked in 45 min late' },
+  { type: 'Non-Work App Used', severity: 'medium' as const, employeeId: 'e5', message: 'Priya Devi used YouTube during work hours' },
+  { type: 'Missed Clock-In', severity: 'critical' as const, employeeId: 'e8', message: 'Vikram Singh has not clocked in' },
 ]
 
 const bridgePool = [
