@@ -15,14 +15,17 @@ import { cn } from '../../lib/utils'
 const dotColor: Record<string, string> = {
   online: 'bg-green-400', break: 'bg-amber-400', offline: 'bg-gray-500', 'clocked-out': 'bg-red-400',
 }
-const pillColor: Record<string, string> = {
-  critical: 'bg-red-500/20 border-red-500/40 text-red-400',
-  high: 'bg-red-500/20 border-red-500/40 text-red-400',
-  medium: 'bg-amber-500/20 border-amber-500/40 text-amber-400',
-  low: 'border border-white/20 text-white/50',
-}
 const dotSeverity: Record<string, string> = {
   critical: 'bg-red-400', high: 'bg-red-400', medium: 'bg-amber-400', low: 'bg-gray-400',
+}
+const severityLabel: Record<string, string> = {
+  critical: 'Urgent', high: 'High', medium: 'Moderate', low: 'Low',
+}
+const badgeColor: Record<string, string> = {
+  critical: 'bg-red-500/20 text-red-400 border-red-500/30',
+  high: 'bg-red-500/20 text-red-400 border-red-500/30',
+  medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
 }
 
 const companyEvents = [
@@ -33,11 +36,14 @@ const companyEvents = [
   { name: 'NEXUS Hackathon', date: 'Jun 1', color: 'bg-violet-400' },
 ]
 
-const kpiIcons = {
-  headcount: Users,
-  online: Wifi,
-  exceptions: AlertTriangle,
-  leave: CalendarX,
+const months: Record<string, number> = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 }
+
+function daysFromNow(dateStr: string): number {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const [mon, day] = dateStr.split(' ')
+  const d = new Date(today.getFullYear(), months[mon], parseInt(day))
+  return Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 export function AdminDashboard() {
@@ -48,8 +54,6 @@ export function AdminDashboard() {
 
   const allExceptions = [...exceptionEvents, ...liveExceptions].filter(e => !e.resolved && !dismissed.includes(e.id))
   const online = employees.filter(e => presenceStatuses[e.id] === 'online').length
-  const onBreak = employees.filter(e => presenceStatuses[e.id] === 'break').length
-  const openExceptions = allExceptions.length
   const pendingLeave = leaveRequests.filter(l => l.status === 'pending')
 
   const trendKey = trendTab === 'productivity' ? 'avg' : trendTab === 'attendance' ? 'attendance' : 'leave'
@@ -57,101 +61,79 @@ export function AdminDashboard() {
   const trendDomain = trendTab === 'leave' ? [0, 10] : [60, 100]
 
   return (
-    <div className="space-y-5 animate-fade-up">
-      {/* Exception Alert Strip */}
-      {allExceptions.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {allExceptions.map(ex => (
-            <div
-              key={ex.id}
-              className={cn('flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-outfit whitespace-nowrap flex-shrink-0', pillColor[ex.severity])}
-            >
-              <span className={cn('w-1.5 h-1.5 rounded-full', dotSeverity[ex.severity])} />
-              <span>{ex.type} — {employees.find(e => e.id === ex.employeeId)?.name ?? ex.employeeId}</span>
-              <button onClick={() => setDismissed(d => [...d, ex.id])} className="ml-1 hover:opacity-70">
-                <X size={11} />
-              </button>
+    <div className="space-y-5">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: 'Total Staff', value: employees.length, delta: '+2%', deltaPos: true, color: 'text-white' },
+          { label: 'Online Now', value: online, sub: `of ${employees.length}`, delta: '+5%', deltaPos: true, color: 'text-green-400' },
+          { label: 'Active Issues', value: allExceptions.length, delta: null, color: 'text-red-400', glow: allExceptions.length > 0 },
+          { label: 'Leave Requests', value: pendingLeave.length, delta: '-1%', deltaPos: false, color: 'text-amber-400' },
+        ].map(card => (
+          <GlassCard key={card.label} glow={card.glow}>
+            <div className="flex items-start justify-between">
+              <div className="text-white/50 text-xs font-outfit">{card.label}</div>
+              {card.delta && (
+                <span className={cn('text-xs font-geist font-semibold', card.deltaPos ? 'text-green-400' : 'text-red-400')}>
+                  {card.delta}
+                </span>
+              )}
             </div>
-          ))}
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <div className={cn('text-3xl font-geist font-bold', card.color)}>{card.value}</div>
+              {card.sub && <span className="text-sm text-white/30 font-outfit">{card.sub}</span>}
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+
+      {/* Current Issues */}
+      {allExceptions.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-white/50 text-xs font-outfit uppercase tracking-wider">
+              Current Issues · {allExceptions.length} open
+            </div>
+            <button
+              onClick={() => setDismissed(allExceptions.map(e => e.id))}
+              className="text-xs text-white/30 hover:text-white/60 font-outfit transition-colors"
+            >
+              Dismiss All
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {allExceptions.slice(0, 4).map(ex => {
+              const emp = employees.find(e => e.id === ex.employeeId)
+              const borderColor = ex.severity === 'critical' || ex.severity === 'high' ? 'border-red-500/50' : ex.severity === 'medium' ? 'border-amber-500/50' : 'border-blue-500/30'
+              const bgColor = ex.severity === 'critical' || ex.severity === 'high' ? 'bg-red-500/[0.04]' : ex.severity === 'medium' ? 'bg-amber-500/[0.04]' : 'bg-blue-500/[0.04]'
+              return (
+                <div key={ex.id} className={cn('flex items-start gap-3 px-4 py-3 rounded-xl border', borderColor, bgColor)}>
+                  <div className={cn('w-2 h-2 rounded-full mt-1 flex-shrink-0', dotSeverity[ex.severity])} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white/85 text-sm font-outfit">{ex.type}</div>
+                    <div className="text-white/40 text-xs mt-0.5">{ex.message}</div>
+                    {emp && <div className="text-white/30 text-xs mt-1">{emp.name} · {emp.department}</div>}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className={cn('text-[11px] px-2 py-0.5 rounded-full border font-outfit', badgeColor[ex.severity])}>
+                      {severityLabel[ex.severity]}
+                    </span>
+                    <button onClick={() => setDismissed(d => [...d, ex.id])} className="text-white/20 hover:text-white/50 transition-colors">
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            key: 'headcount',
-            label: 'Total Headcount',
-            value: employees.length,
-            sub: `${employees.filter(e => e.employmentType === 'full-time').length} FT · ${employees.filter(e => e.employmentType === 'contract').length} contract`,
-            delta: '+2 this month',
-            deltaPos: true,
-            color: 'text-white',
-            iconBg: 'bg-violet-500/15 text-violet-400',
-          },
-          {
-            key: 'online',
-            label: 'Online Now',
-            value: online,
-            sub: `${onBreak} on break · ${employees.length - online - onBreak} offline`,
-            delta: `${Math.round((online / employees.length) * 100)}% present`,
-            deltaPos: true,
-            color: 'text-green-400',
-            iconBg: 'bg-green-500/15 text-green-400',
-          },
-          {
-            key: 'exceptions',
-            label: 'Open Exceptions',
-            value: openExceptions,
-            sub: openExceptions > 0 ? `${allExceptions.filter(e => e.severity === 'critical' || e.severity === 'high').length} high severity` : 'All clear',
-            delta: null,
-            color: openExceptions > 0 ? 'text-red-400' : 'text-white/50',
-            glow: openExceptions > 0,
-            iconBg: openExceptions > 0 ? 'bg-red-500/15 text-red-400' : 'bg-white/5 text-white/30',
-          },
-          {
-            key: 'leave',
-            label: 'Pending Leave',
-            value: pendingLeave.length,
-            sub: `${leaveRequests.filter(l => l.status === 'approved').length} approved this month`,
-            delta: null,
-            color: 'text-amber-400',
-            iconBg: 'bg-amber-500/15 text-amber-400',
-          },
-        ].map(card => {
-          const Icon = kpiIcons[card.key as keyof typeof kpiIcons]
-          return (
-            <GlassCard key={card.label} glow={card.glow} className="group hover:border-white/[0.14] transition-all duration-200">
-              <div className="flex items-start justify-between mb-3">
-                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', card.iconBg)}>
-                  <Icon size={15} />
-                </div>
-                {card.delta && (
-                  <div className={cn('flex items-center gap-1 text-[11px] font-medium', card.deltaPos ? 'text-green-400' : 'text-red-400')}>
-                    {card.deltaPos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                    {card.delta}
-                  </div>
-                )}
-              </div>
-              <div className={cn('text-3xl font-bold font-geist mt-1', card.color)}>{card.value}</div>
-              <div className="text-white/40 text-[11px] mt-1 font-outfit">{card.label}</div>
-              <div className="text-white/25 text-[10px] mt-0.5">{card.sub}</div>
-            </GlassCard>
-          )
-        })}
-      </div>
-
-      {/* Row 2: Pending Actions + Trends */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Pending Actions */}
+        {/* Needs Approval */}
         <GlassCard className="col-span-1">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-white/70 font-semibold text-sm">Pending Actions</div>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
-              {pendingLeave.length + 2} total
-            </span>
-          </div>
-          <div className="space-y-3">
+          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Needs Approval</div>
+          <div className="space-y-2.5">
             {pendingLeave.slice(0, 3).map(req => {
               const emp = employees.find(e => e.id === req.employeeId)
               return (
@@ -185,24 +167,20 @@ export function AdminDashboard() {
           </button>
         </GlassCard>
 
-        {/* Trends Chart */}
+        {/* Weekly Trends */}
         <GlassCard className="col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-white/70 font-semibold text-sm">Workforce Trends</div>
-            <div className="flex gap-1 p-0.5 bg-white/[0.04] rounded-lg border border-white/[0.06]">
-              {[
-                { id: 'productivity', label: 'Productivity' },
-                { id: 'attendance', label: 'Attendance' },
-                { id: 'leave', label: 'Leave' },
-              ].map(tab => (
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-white/70 font-outfit font-semibold text-sm">Weekly Trends</div>
+            <div className="flex gap-1">
+              {['productivity', 'attendance', 'leave'].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setTrendTab(tab.id)}
                   className={cn(
-                    'px-3 py-1 rounded-md text-xs font-outfit capitalize transition-all',
-                    trendTab === tab.id
-                      ? 'bg-violet-600/25 text-violet-300 border border-violet-500/30'
-                      : 'text-white/35 hover:text-white/60'
+                    'px-3 py-0.5 rounded-full text-xs font-outfit capitalize transition-all',
+                    trendTab === tab
+                      ? 'bg-violet-600/20 text-violet-400 border border-violet-500/30 font-semibold'
+                      : 'text-white/40 hover:text-white/60'
                   )}
                 >
                   {tab.label}
@@ -233,17 +211,11 @@ export function AdminDashboard() {
 
       {/* Row 3: Workforce Live + Events */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Workforce Live */}
+        {/* Who's Online */}
         <GlassCard className="col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-white/70 font-semibold text-sm">Workforce Live</div>
-            <div className="flex items-center gap-2 text-[11px] text-white/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" /> {online} online
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block ml-1" /> {onBreak} on break
-            </div>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-none">
-            {employees.slice(0, 14).map(emp => (
+          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Who's Online</div>
+          <div className="flex gap-4 overflow-x-auto pb-1">
+            {employees.slice(0, 10).map(emp => (
               <div key={emp.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
                 <div className="relative">
                   <img src={emp.avatar} alt={emp.name} className="w-9 h-9 rounded-full bg-white/10" />
@@ -265,94 +237,23 @@ export function AdminDashboard() {
 
         {/* Upcoming Events */}
         <GlassCard className="col-span-1">
-          <div className="text-white/70 font-semibold text-sm mb-4">Upcoming Events</div>
-          <div className="space-y-2.5">
-            {companyEvents.map(ev => (
-              <div key={ev.name} className="flex items-center gap-2.5">
-                <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', ev.color)} />
-                <span className="text-white/75 text-xs font-outfit flex-1 leading-tight">{ev.name}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.07] text-white/35 font-geist shrink-0">{ev.date}</span>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      </div>
-
-      {/* Row 4: Dept breakdown + Active Alerts */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Dept breakdown */}
-        <GlassCard className="col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-white/70 font-semibold text-sm">Department Overview</div>
-            <span className="text-white/25 text-xs">{employees.length} total employees</span>
-          </div>
-          <div className="space-y-2.5">
-            {[
-              { dept: 'Engineering', count: employees.filter(e => e.department === 'Engineering').length },
-              { dept: 'HR', count: employees.filter(e => e.department === 'HR').length },
-              { dept: 'Finance', count: employees.filter(e => e.department === 'Finance').length },
-              { dept: 'Marketing', count: employees.filter(e => e.department === 'Marketing').length },
-              { dept: 'Product', count: employees.filter(e => e.department === 'Product').length },
-              { dept: 'Operations', count: employees.filter(e => e.department === 'Operations').length },
-              { dept: 'Sales', count: employees.filter(e => e.department === 'Sales').length },
-            ].map(({ dept, count }) => (
-              <div key={dept} className="flex items-center gap-3">
-                <span className="text-white/50 text-xs w-24 shrink-0 font-outfit">{dept}</span>
-                <div className="flex-1 h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-violet-500 rounded-full transition-all duration-700"
-                    style={{ width: `${(count / employees.length) * 100}%` }}
-                  />
+          <div className="text-white/70 font-outfit font-semibold text-sm mb-3">Upcoming Events</div>
+          <div className="space-y-2">
+            {companyEvents.map(ev => {
+              const days = daysFromNow(ev.date)
+              return (
+                <div key={ev.name} className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 flex-shrink-0" />
+                  <span className="text-white/80 text-xs font-outfit flex-1">{ev.name}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/40 font-geist">
+                    {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`}
+                  </span>
                 </div>
                 <span className="text-white/40 text-xs font-geist w-4 text-right">{count}</span>
               </div>
             ))}
           </div>
         </GlassCard>
-
-        {/* Active Alerts */}
-        {allExceptions.length > 0 ? (
-          <GlassCard className="col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-white/70 font-semibold text-sm">Active Alerts</div>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
-                {allExceptions.length} open
-              </span>
-            </div>
-            <div className="space-y-2.5">
-              {allExceptions.slice(0, 4).map(ex => {
-                const emp = employees.find(e => e.id === ex.employeeId)
-                const severity = ex.severity === 'critical' || ex.severity === 'high' ? 'high' : ex.severity
-                const colors = {
-                  high: { dot: 'bg-red-400', text: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
-                  medium: { dot: 'bg-amber-400', text: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-                  low: { dot: 'bg-gray-400', text: 'text-white/40', bg: 'bg-white/[0.03] border-white/[0.07]' },
-                }
-                const c = colors[severity as keyof typeof colors] ?? colors.low
-                return (
-                  <div key={ex.id} className={cn('flex items-start gap-2.5 p-2.5 rounded-lg border', c.bg)}>
-                    <span className={cn('w-1.5 h-1.5 rounded-full mt-1 shrink-0', c.dot)} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white/75 text-xs font-medium">{ex.type}</div>
-                      <div className="text-white/35 text-[10px] mt-0.5">{emp?.name}</div>
-                    </div>
-                    <button onClick={() => setDismissed(d => [...d, ex.id])} className="text-white/20 hover:text-white/50 transition-colors shrink-0">
-                      <X size={11} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </GlassCard>
-        ) : (
-          <GlassCard className="col-span-1 flex flex-col items-center justify-center py-6 text-center">
-            <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-3">
-              <ShieldCheck size={18} className="text-green-400" />
-            </div>
-            <div className="text-white/70 text-sm font-medium">All Clear</div>
-            <div className="text-white/30 text-xs mt-1">No active exceptions</div>
-          </GlassCard>
-        )}
       </div>
     </div>
   )
