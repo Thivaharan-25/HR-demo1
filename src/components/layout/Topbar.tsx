@@ -34,7 +34,7 @@ export function Topbar() {
   const handleLogout = () => { logout(); navigate('/login') }
 
   return (
-    <div className="h-14 bg-[#08080f]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between px-5 fixed top-0 left-16 right-0 z-40">
+    <div className="h-14 bg-[#08080f]/80 backdrop-blur-xl border-b border-white/[0.06] flex items-center justify-between px-5 fixed top-0 left-[220px] right-0 z-40">
       {/* Breadcrumbs */}
       <div className="flex items-center gap-1.5 min-w-0">
         <span className="text-sm font-outfit font-semibold shrink-0" style={{ color: tenantColor }}>

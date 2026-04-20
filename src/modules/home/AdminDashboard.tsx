@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { GlassCard } from '../../components/ui/GlassCard'
 import { employees } from '../../mock/data/employees'
 import { exceptionEvents } from '../../mock/data/exceptions'
-import { weeklyTrend } from '../../mock/data/analytics'
+import { weeklyTrend, departmentStats, headcountTrend } from '../../mock/data/analytics'
 import { leaveRequests } from '../../mock/data/leave'
 import { useLiveStore } from '../../store/liveStore'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { X } from 'lucide-react'
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, LineChart, Line, CartesianGrid,
+} from 'recharts'
+import { Users, Wifi, AlertTriangle, CalendarX, X, TrendingUp, TrendingDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const dotColor: Record<string, string> = {
@@ -26,11 +29,11 @@ const badgeColor: Record<string, string> = {
 }
 
 const companyEvents = [
-  { name: 'All-Hands Meeting', date: 'Apr 25' },
-  { name: 'Q2 Planning', date: 'May 5' },
-  { name: 'Team Building Day', date: 'May 16' },
-  { name: 'Performance Reviews', date: 'May 20' },
-  { name: 'NEXUS Hackathon', date: 'Jun 1' },
+  { name: 'All-Hands Meeting', date: 'Apr 25', color: 'bg-violet-400' },
+  { name: 'Q2 Planning', date: 'May 5', color: 'bg-sky-400' },
+  { name: 'Team Building Day', date: 'May 16', color: 'bg-emerald-400' },
+  { name: 'Performance Reviews', date: 'May 20', color: 'bg-amber-400' },
+  { name: 'NEXUS Hackathon', date: 'Jun 1', color: 'bg-violet-400' },
 ]
 
 const months: Record<string, number> = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 }
@@ -52,6 +55,10 @@ export function AdminDashboard() {
   const allExceptions = [...exceptionEvents, ...liveExceptions].filter(e => !e.resolved && !dismissed.includes(e.id))
   const online = employees.filter(e => presenceStatuses[e.id] === 'online').length
   const pendingLeave = leaveRequests.filter(l => l.status === 'pending')
+
+  const trendKey = trendTab === 'productivity' ? 'avg' : trendTab === 'attendance' ? 'attendance' : 'leave'
+  const trendColor = trendTab === 'leave' ? '#f59e0b' : '#7C3AED'
+  const trendDomain = trendTab === 'leave' ? [0, 10] : [60, 100]
 
   return (
     <div className="space-y-5">
@@ -130,19 +137,34 @@ export function AdminDashboard() {
             {pendingLeave.slice(0, 3).map(req => {
               const emp = employees.find(e => e.id === req.employeeId)
               return (
-                <div key={req.id} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  <span className="text-white/80 text-xs flex-1 font-outfit">
-                    {emp?.name} · {req.type} Leave ({req.days}d)
-                  </span>
-                  <button className="text-xs px-2 py-0.5 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-400 font-outfit hover:bg-violet-600/30">
+                <div key={req.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.025] border border-white/[0.05]">
+                  <img src={emp?.avatar} alt="" className="w-7 h-7 rounded-full shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white/80 text-xs font-medium truncate">{emp?.name}</div>
+                    <div className="text-white/35 text-[10px]">{req.type} · {req.days}d</div>
+                  </div>
+                  <button className="text-[10px] px-2 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 hover:bg-violet-600/35 transition-colors shrink-0">
                     Approve
                   </button>
                 </div>
               )
             })}
-            <div className="text-violet-400 text-xs font-outfit pt-1 cursor-pointer hover:underline">View All →</div>
+            {[
+              { label: 'Skill validation · Fatimah Zahra', type: 'skill' },
+              { label: 'Document ACK · Jason Teo', type: 'doc' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2.5 p-2 rounded-lg bg-white/[0.025] border border-white/[0.05]">
+                <span className="w-7 h-7 rounded-full bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 shrink-0 text-[10px] font-bold">
+                  {item.type === 'skill' ? 'SK' : 'DC'}
+                </span>
+                <div className="flex-1 min-w-0 text-white/60 text-xs truncate">{item.label}</div>
+                <button className="text-[10px] px-2 py-1 rounded-lg border border-white/10 text-white/35 hover:text-white/60 transition-colors shrink-0">View</button>
+              </div>
+            ))}
           </div>
+          <button className="w-full mt-3 text-violet-400/70 text-xs hover:text-violet-400 transition-colors text-center pt-2 border-t border-white/[0.05]">
+            View all actions →
+          </button>
         </GlassCard>
 
         {/* Weekly Trends */}
@@ -152,8 +174,8 @@ export function AdminDashboard() {
             <div className="flex gap-1">
               {['productivity', 'attendance', 'leave'].map(tab => (
                 <button
-                  key={tab}
-                  onClick={() => setTrendTab(tab)}
+                  key={tab.id}
+                  onClick={() => setTrendTab(tab.id)}
                   className={cn(
                     'px-3 py-0.5 rounded-full text-xs font-outfit capitalize transition-all',
                     trendTab === tab
@@ -161,28 +183,33 @@ export function AdminDashboard() {
                       : 'text-white/40 hover:text-white/60'
                   )}
                 >
-                  {tab}
+                  {tab.label}
                 </button>
               ))}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={weeklyTrend}>
+          <ResponsiveContainer width="100%" height={175}>
+            <AreaChart data={weeklyTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
+                <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={trendColor} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" tick={{ fill: '#ffffff40', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#ffffff40', fontSize: 10 }} domain={[60, 100]} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #ffffff15', borderRadius: 8, fontSize: 12 }} />
-              <Area type="monotone" dataKey="avg" stroke="#7C3AED" strokeWidth={2} fill="url(#grad)" />
+              <CartesianGrid stroke="rgba(255,255,255,0.03)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: '#ffffff30', fontSize: 9 }} axisLine={false} tickLine={false} interval={3} />
+              <YAxis tick={{ fill: '#ffffff30', fontSize: 9 }} domain={trendDomain} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: '#131220', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, fontSize: 11 }}
+                labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+              />
+              <Area type="monotone" dataKey={trendKey} stroke={trendColor} strokeWidth={2} fill="url(#trendGrad)" dot={false} activeDot={{ r: 4 }} />
             </AreaChart>
           </ResponsiveContainer>
         </GlassCard>
       </div>
 
+      {/* Row 3: Workforce Live + Events */}
       <div className="grid grid-cols-3 gap-4">
         {/* Who's Online */}
         <GlassCard className="col-span-2">
@@ -194,10 +221,17 @@ export function AdminDashboard() {
                   <img src={emp.avatar} alt={emp.name} className="w-9 h-9 rounded-full bg-white/10" />
                   <span className={cn('absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#0d0d1a]', dotColor[presenceStatuses[emp.id] ?? 'offline'])} />
                 </div>
-                <div className="text-white/60 text-[10px] font-outfit max-w-[52px] truncate text-center">{emp.name.split(' ')[0]}</div>
-                <div className="text-white/30 text-[9px] capitalize">{presenceStatuses[emp.id] ?? 'offline'}</div>
+                <div className="text-white/55 text-[10px] font-outfit max-w-[48px] truncate text-center">{emp.name.split(' ')[0]}</div>
               </div>
             ))}
+            {employees.length > 14 && (
+              <div className="flex flex-col items-center justify-center gap-1.5 flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                  <span className="text-white/35 text-[10px] font-bold">+{employees.length - 14}</span>
+                </div>
+                <div className="text-white/30 text-[10px]">more</div>
+              </div>
+            )}
           </div>
         </GlassCard>
 
@@ -215,11 +249,20 @@ export function AdminDashboard() {
                     {days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days}d`}
                   </span>
                 </div>
-              )
-            })}
+                <span className="text-white/40 text-xs font-geist w-4 text-right">{count}</span>
+              </div>
+            ))}
           </div>
         </GlassCard>
       </div>
     </div>
+  )
+}
+
+function ShieldCheck({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" />
+    </svg>
   )
 }
