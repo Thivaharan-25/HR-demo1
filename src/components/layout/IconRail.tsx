@@ -1,4 +1,4 @@
-import { Home, Users, Radio, Building2, CalendarDays, Bell, Settings, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Home, Users, Radio, Building2, CalendarDays, Bell, Settings, ShieldCheck, BookOpen, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveStore } from '../../store/liveStore'
 import { useAuthStore } from '../../store/authStore'
@@ -16,6 +16,7 @@ const pillars: Array<{
   { icon: Users, label: 'People', defaultPath: '/people/employees', pillarKey: 'people', module: 'core-hr' },
   { icon: Radio, label: 'Workforce', defaultPath: '/workforce', pillarKey: 'workforce', module: 'workforce' },
   { icon: Building2, label: 'Org', defaultPath: '/org', pillarKey: 'org', module: 'org-structure' },
+  { icon: BookOpen, label: 'Skills', defaultPath: '/skills', pillarKey: 'skills', module: null },
   { icon: CalendarDays, label: 'Calendar', defaultPath: '/calendar', pillarKey: 'calendar', module: 'calendar' },
   { icon: Bell, label: 'Inbox', defaultPath: '/inbox', pillarKey: 'inbox', module: 'notifications' },
   { icon: ShieldCheck, label: 'Admin', defaultPath: '/admin', pillarKey: 'admin', module: 'admin' },

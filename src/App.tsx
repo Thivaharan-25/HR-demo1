@@ -12,6 +12,7 @@ import { AdminPage } from './modules/admin/AdminPage'
 import { SettingsPage } from './modules/settings/SettingsPage'
 import { EmployeeProfile } from './modules/people/employees/EmployeeProfile'
 import { DocumentsPage } from './modules/people/documents/DocumentsPage'
+import { SkillsPage } from './modules/skills/SkillsPage'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/people/leave/*" element={<LeavePage />} />
           <Route path="/workforce/*" element={<WorkforcePage />} />
           <Route path="/org/*" element={<OrgPage />} />
+          <Route path="/skills" element={<SkillsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/inbox" element={<InboxPage />} />
           <Route path="/admin/*" element={<AdminPage />} />

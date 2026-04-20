@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 
-export type PillarKey = 'home' | 'people' | 'workforce' | 'org' | 'calendar' | 'inbox' | 'admin' | 'settings'
+export type PillarKey = 'home' | 'people' | 'workforce' | 'org' | 'skills' | 'calendar' | 'inbox' | 'admin' | 'settings'
 
-export const PANEL_PILLARS: PillarKey[] = ['people', 'org', 'admin', 'settings']
+// Kept for any remaining references — no longer drives panel behavior
+export const PANEL_PILLARS: PillarKey[] = []
 
 interface NavState {
   activePillar: PillarKey
@@ -11,19 +12,9 @@ interface NavState {
   togglePillar: (pillar: PillarKey) => void
 }
 
-export const useNavStore = create<NavState>((set, get) => ({
+export const useNavStore = create<NavState>((set) => ({
   activePillar: 'home',
   panelOpen: false,
-  setActivePillar: (pillar) => set({
-    activePillar: pillar,
-    panelOpen: PANEL_PILLARS.includes(pillar),
-  }),
-  togglePillar: (pillar) => {
-    const { activePillar, panelOpen } = get()
-    if (activePillar === pillar && PANEL_PILLARS.includes(pillar)) {
-      set({ panelOpen: !panelOpen })
-    } else {
-      set({ activePillar: pillar, panelOpen: PANEL_PILLARS.includes(pillar) })
-    }
-  },
+  setActivePillar: (pillar) => set({ activePillar: pillar, panelOpen: false }),
+  togglePillar: (pillar) => set({ activePillar: pillar, panelOpen: false }),
 }))

@@ -1,17 +1,16 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { useNavStore, PANEL_PILLARS, type PillarKey } from '../../store/navStore'
-import { IconRail } from './IconRail'
+import { useNavStore, type PillarKey } from '../../store/navStore'
+import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
-import { ExpansionPanel } from './ExpansionPanel'
 import { useMockEventEngine } from '../../hooks/useMockEventEngine'
 import { useEffect } from 'react'
-import { cn } from '../../lib/utils'
 
 function pathToPillar(pathname: string): PillarKey {
   if (pathname.startsWith('/people')) return 'people'
   if (pathname.startsWith('/workforce')) return 'workforce'
   if (pathname.startsWith('/org')) return 'org'
+  if (pathname.startsWith('/skills')) return 'skills'
   if (pathname.startsWith('/calendar')) return 'calendar'
   if (pathname.startsWith('/inbox')) return 'inbox'
   if (pathname.startsWith('/admin')) return 'admin'
@@ -21,7 +20,7 @@ function pathToPillar(pathname: string): PillarKey {
 
 export function DashboardLayout() {
   const personaKey = useAuthStore((s) => s.personaKey)
-  const { setActivePillar, panelOpen, activePillar } = useNavStore()
+  const { setActivePillar } = useNavStore()
   const location = useLocation()
   useMockEventEngine()
 
@@ -31,9 +30,6 @@ export function DashboardLayout() {
 
   if (!personaKey) return <Navigate to="/login" replace />
 
-  const hasPanelContent = PANEL_PILLARS.includes(activePillar as PillarKey)
-  const sidebarWidth = panelOpen && hasPanelContent ? 'ml-[284px]' : 'ml-16'
-
   return (
     <div className="min-h-screen text-white" style={{ backgroundColor: '#08080f' }}>
       {/* Ambient background */}
@@ -42,17 +38,10 @@ export function DashboardLayout() {
         <div className="absolute bottom-0 right-0 w-[500px] h-[400px] bg-[radial-gradient(ellipse,rgba(14,165,233,0.03)_0%,transparent_70%)]" />
       </div>
 
-      <IconRail />
-      <ExpansionPanel />
+      <Sidebar />
       <Topbar />
 
-      <main
-        className={cn(
-          'pt-14 min-h-screen relative z-10',
-          'transition-[margin-left] duration-200 ease-in-out',
-          sidebarWidth
-        )}
-      >
+      <main className="pl-[220px] pt-14 min-h-screen relative z-10">
         <div className="p-6 max-w-[1400px]">
           <Outlet />
         </div>
